@@ -12,6 +12,10 @@ repositories {
     jcenter()
 }
 
+application {
+    mainClass.set("ru.senin.kotlin.wiki.MainKt")
+}
+
 dependencies {
     implementation("com.apurebase:arkenv:3.1.0")
     implementation("org.apache.commons:commons-compress:1.20")
@@ -29,4 +33,8 @@ kotlin.sourceSets.all {
     languageSettings.apply {
         useExperimentalAnnotation("kotlin.time.ExperimentalTime")
     }
+}
+
+tasks.withType<Test>().all {
+    useJUnitPlatform()
 }
