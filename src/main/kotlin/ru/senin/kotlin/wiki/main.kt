@@ -53,7 +53,11 @@ val words: ConcurrentHashMap<String, Int> = ConcurrentHashMap()
 val years: MutableList<Int> = MutableList(10000) { 0 }
 val sizes: MutableList<Int> = MutableList(10000) { 0 }
 
-fun checkIfWordIsRussian(word: String): Boolean = """^[а-яА-Я]{3,}$""".toRegex().matches(word)
+fun checkIfWordIsRussian(word: String): Boolean =
+    """^[а-яА-Я]{3,}$""".toRegex().matches(word)
+
+fun getRussianWords(s: String): List<String> =
+    s.split("""[^А-Яа-я]+""".toRegex()).map { it.toLowerCase() }.filter { it.length >= 3 }
 
 fun cmp() = Comparator<MutableMap.MutableEntry<String, Int>> { it1, it2 ->
     when {
@@ -65,8 +69,8 @@ fun cmp() = Comparator<MutableMap.MutableEntry<String, Int>> { it1, it2 ->
 
 fun getPow(k: Int): Int {
     var cur = 10
-    for(i in 0 until 10000) {
-        if(k < cur)
+    for (i in 0 until 10000) {
+        if (k < cur)
             return i
         cur *= 10
     }
@@ -192,13 +196,13 @@ internal class SAXHandler : DefaultHandler() {
         if (isInsidePageRevision && qName == "text") {
             val n = attributes.length
             var sz = -1
-            for(i in 0 until n) {
-                if(attributes.getLocalName(i) == "bytes") {
+            for (i in 0 until n) {
+                if (attributes.getLocalName(i) == "bytes") {
                     sz = attributes.getValue(i).toInt()
                     break
                 }
             }
-            if(sz != -1)
+            if (sz != -1)
                 sizes[getPow(sz)]++
             isInsidePageRevisionText = true
         }
@@ -227,21 +231,17 @@ internal class SAXHandler : DefaultHandler() {
     override fun characters(ch: CharArray, start: Int, length: Int) {
         if (isInsidePageTitle && length >= 3) {
             count.incrementAndGet()
-            val title = String(ch, start, length)
-            for (t in title.split(" "))
-                if (checkIfWordIsRussian(t))
-                    titles[t] = titles.getOrElse(t, { 0 }) + 1
+            for (t in getRussianWords(String(ch, start, length)))
+                titles[t] = titles.getOrElse(t, { 0 }) + 1
         }
         if (isInsidePageRevisionText && length >= 3) {
-            val word = String(ch, start, length)
-            for (w in word.split(" "))
-                if (checkIfWordIsRussian(w))
-                    words[w] = words.getOrElse(w, { 0 }) + 1
+            for (w in getRussianWords(String(ch, start, length)))
+                words[w] = words.getOrElse(w, { 0 }) + 1
         }
         if (isInsidePageRevisionTime) {
             val time = String(ch, start, length)
             val year = time.substring(0, 4).toIntOrNull()
-            if(year != null)
+            if (year != null)
                 years[year]++
         }
     }
