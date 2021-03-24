@@ -172,6 +172,15 @@ class SaxParser {
 
 internal class SAXHandler : DefaultHandler() {
 
+    var currentText: List<String> = listOf()
+    var currentTitle: List<String> = listOf()
+    var currentSize: Int = 0
+    var currentTime: Int = 0
+
+    var wasText = false
+    var wasTitle = false
+    var wasSize = false
+    var wasTime = false
 
     var isInsidePage = false
     var isInsidePageTitle = false
@@ -202,8 +211,11 @@ internal class SAXHandler : DefaultHandler() {
                     break
                 }
             }
-            if (sz != -1)
-                sizes[getPow(sz)]++
+            if (sz != -1) {
+                wasSize = true
+                currentSize = getPow(sz)
+//                sizes[getPow(sz)]++
+            }
             isInsidePageRevisionText = true
         }
     }
@@ -211,6 +223,24 @@ internal class SAXHandler : DefaultHandler() {
     @Throws(SAXException::class)
     override fun endElement(uri: String, localName: String, qName: String) {
         if (qName == "page") {
+            if (wasTitle && wasText && wasSize && wasTime) {
+                for (t in currentTitle)
+                    titles[t] = titles.getOrElse(t, { 0 }) + 1
+                for (w in currentText)
+                    words[w] = words.getOrElse(w, { 0 }) + 1
+                sizes[currentSize]++
+                years[currentTime]++
+            }
+            wasTitle = false
+            wasText = false
+            wasSize = false
+            wasTime = false
+
+            currentTitle = listOf()
+            currentText = listOf()
+            currentSize = 0
+            currentTime = 0
+
             isInsidePage = false
         }
         if (qName == "title") {
@@ -230,19 +260,26 @@ internal class SAXHandler : DefaultHandler() {
     @Throws(SAXException::class)
     override fun characters(ch: CharArray, start: Int, length: Int) {
         if (isInsidePageTitle && length >= 3) {
+            wasTitle = true
             count.incrementAndGet()
-            for (t in getRussianWords(String(ch, start, length)))
-                titles[t] = titles.getOrElse(t, { 0 }) + 1
+            currentTitle = getRussianWords(String(ch, start, length))
+//            for (t in getRussianWords(String(ch, start, length)))
+//                titles[t] = titles.getOrElse(t, { 0 }) + 1
         }
         if (isInsidePageRevisionText && length >= 3) {
-            for (w in getRussianWords(String(ch, start, length)))
-                words[w] = words.getOrElse(w, { 0 }) + 1
+            wasText = true
+            currentText = getRussianWords(String(ch, start, length))
+//            for (w in getRussianWords(String(ch, start, length)))
+//                words[w] = words.getOrElse(w, { 0 }) + 1
         }
         if (isInsidePageRevisionTime) {
             val time = String(ch, start, length)
             val year = time.substring(0, 4).toIntOrNull()
-            if (year != null)
-                years[year]++
+            if (year != null) {
+                wasTime = true
+                currentTime = year
+//                years[year]++
+            }
         }
     }
 }
