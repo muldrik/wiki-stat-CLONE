@@ -13,8 +13,10 @@ import java.lang.Thread.sleep
 import javax.xml.parsers.SAXParserFactory;
 import java.nio.file.Files
 import java.nio.file.Paths
+import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.Comparator
 import kotlin.concurrent.thread
 import kotlin.time.measureTime
 
@@ -109,8 +111,8 @@ fun printWords(outputWriter: FileWriter) {
 fun printYears(outputWriter: FileWriter) {
     var l = -1
     var r = 10000
-    while (years[++l] == 0);
-    while (years[--r] == 0);
+    while ((++l < 10000) && years[l] == 0);
+    while ((--r >= 0) && years[r] == 0);
     outputWriter.write("Распределение статей по времени:\n")
     while (l <= r) {
         outputWriter.write("$l ${years[l]}\n")
@@ -121,8 +123,8 @@ fun printYears(outputWriter: FileWriter) {
 fun printSizes(outputWriter: FileWriter) {
     var l = -1
     var r = 10000
-    while (sizes[++l] == 0);
-    while (sizes[--r] == 0);
+    while ((++l < 10000) && sizes[l] == 0);
+    while ((--r >= 0) && sizes[r] == 0);
     outputWriter.write("Распределение статей по размеру:\n")
     while (l <= r) {
         outputWriter.write("$l ${sizes[l]}\n")
@@ -183,10 +185,16 @@ class SaxParser {
     }
 }
 
+val insidePage: List<String> = listOf("mediawiki", "page")
+val insidePageTitle: List<String> = listOf("mediawiki", "page", "title")
+val insidePageRevision: List<String> = listOf("mediawiki", "page", "revision")
+val insidePageRevisionTime: List<String> = listOf("mediawiki", "page", "revision", "timestamp")
+val insidePageRevisionText: List<String> = listOf("mediawiki", "page", "revision", "text")
+
 internal class SAXHandler : DefaultHandler() {
 
-    var currentText: List<String> = listOf()
-    var currentTitle: List<String> = listOf()
+    var currentText: MutableList<String> = mutableListOf()
+    var currentTitle: MutableList<String> = mutableListOf()
     var currentSize: Int = 0
     var currentTime: Int = 0
 
@@ -195,27 +203,12 @@ internal class SAXHandler : DefaultHandler() {
     var wasSize = false
     var wasTime = false
 
-    var isInsidePage = false
-    var isInsidePageTitle = false
-    var isInsidePageRevisionTime = false
-    var isInsidePageRevisionText = false
-    var isInsidePageRevision = false
+    var headers: MutableList<String> = mutableListOf()
 
     @Throws(SAXException::class)
     override fun startElement(uri: String, localName: String, qName: String, attributes: Attributes) {
-        if (qName == "page") {
-            isInsidePage = true
-        }
-        if (isInsidePage && qName == "title") {
-            isInsidePageTitle = true
-        }
-        if (isInsidePage && qName == "revision") {
-            isInsidePageRevision = true
-        }
-        if (isInsidePageRevision && qName == "timestamp") {
-            isInsidePageRevisionTime = true
-        }
-        if (isInsidePageRevision && qName == "text") {
+        headers.add(qName)
+        if (insidePageRevisionText == headers) {
             val n = attributes.length
             var sz = -1
             for (i in 0 until n) {
@@ -229,13 +222,12 @@ internal class SAXHandler : DefaultHandler() {
                 currentSize = getPow(sz)
 //                sizes[getPow(sz)]++
             }
-            isInsidePageRevisionText = true
         }
     }
 
     @Throws(SAXException::class)
     override fun endElement(uri: String, localName: String, qName: String) {
-        if (qName == "page") {
+        if (insidePage == headers) {
             if (wasTitle && wasText && wasSize && wasTime) {
                 for (t in currentTitle)
                     titles[t] = titles.getOrElse(t, { 0 }) + 1
@@ -249,43 +241,29 @@ internal class SAXHandler : DefaultHandler() {
             wasSize = false
             wasTime = false
 
-            currentTitle = listOf()
-            currentText = listOf()
+            currentTitle = mutableListOf()
+            currentText = mutableListOf()
             currentSize = 0
             currentTime = 0
-
-            isInsidePage = false
         }
-        if (qName == "title") {
-            isInsidePageTitle = false
-        }
-        if (qName == "revision") {
-            isInsidePageRevision = false
-        }
-        if (qName == "timestamp") {
-            isInsidePageRevisionTime = false
-        }
-        if (qName == "text") {
-            isInsidePageRevisionText = false
-        }
+        headers.removeLast()
     }
 
     @Throws(SAXException::class)
     override fun characters(ch: CharArray, start: Int, length: Int) {
-        if (isInsidePageTitle && length >= 3) {
+        if (insidePageTitle == headers && length >= 3) {
             wasTitle = true
-            count.incrementAndGet()
-            currentTitle = getRussianWords(String(ch, start, length))
+            currentTitle.addAll(getRussianWords(String(ch, start, length)))
 //            for (t in getRussianWords(String(ch, start, length)))
 //                titles[t] = titles.getOrElse(t, { 0 }) + 1
         }
-        if (isInsidePageRevisionText && length >= 3) {
+        if (insidePageRevisionText == headers && length >= 3) {
             wasText = true
-            currentText = getRussianWords(String(ch, start, length))
+            currentText.addAll(getRussianWords(String(ch, start, length)))
 //            for (w in getRussianWords(String(ch, start, length)))
 //                words[w] = words.getOrElse(w, { 0 }) + 1
         }
-        if (isInsidePageRevisionTime) {
+        if (insidePageRevisionTime == headers) {
             val time = String(ch, start, length)
             val year = time.substring(0, 4).toIntOrNull()
             if (year != null) {
