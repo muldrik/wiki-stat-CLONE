@@ -78,52 +78,64 @@ fun getPow(k: Int): Int {
     return -1
 }
 
-fun printTitles() {
-    println("Топ-300 слов в заголовках статей:")
+/*fun writeInFile(outputFile: File, info: String) {
+    outputFile.printWriter().use { out -> out.println(info) }
+}*/
+
+fun printTitles(outputWriter: FileWriter) {
+    outputWriter.write("Топ-300 слов в заголовках статей:\n")
     var cnt: Int = 0
     for (v in titles.entries.sortedWith(cmp())) {
         if (cnt == 300)
             break
-        println("${v.component2()} ${v.component1()}")
+        outputWriter.write("${v.component2()} ${v.component1()}\n")
         cnt++
     }
+    outputWriter.write("\n")
 }
 
-fun printWords() {
-    println("Топ-300 слов в статьях:")
+fun printWords(outputWriter: FileWriter) {
+    outputWriter.write("Топ-300 слов в статьях:\n")
     var cnt = 0
     for (v in words.entries.sortedWith(cmp())) {
         if (cnt == 300)
             break
-        println("${v.component2()} ${v.component1()}")
+        outputWriter.write("${v.component2()} ${v.component1()}\n")
         cnt++
+    }
+    outputWriter.write("\n")
+}
+
+fun printYears(outputWriter: FileWriter) {
+    var l = -1
+    var r = 10000
+    while (years[++l] == 0);
+    while (years[--r] == 0);
+    outputWriter.write("Распределение статей по времени:\n")
+    while (l <= r) {
+        outputWriter.write("$l ${years[l]}\n")
+        l++
     }
 }
 
-fun printYears() {
-    var l = 0
-    var r = 9999
-    while (years[l++] == 0);
-    while (years[r--] == 0);
-    println("Распределение статей по времени:")
-    while (l++ <= r)
-        println("$l ${years[l]}")
-}
-
-fun printSizes() {
-    var l = 0
-    var r = 9999
-    while (sizes[l++] == 0);
-    while (sizes[r--] == 0);
-    println("Распределение статей по размеру:")
-    while (l++ <= r)
-        println("$l ${sizes[l]}")
+fun printSizes(outputWriter: FileWriter) {
+    var l = -1
+    var r = 10000
+    while (sizes[++l] == 0);
+    while (sizes[--r] == 0);
+    outputWriter.write("Распределение статей по размеру:\n")
+    while (l <= r) {
+        outputWriter.write("$l ${sizes[l]}\n")
+        l++
+    }
+    outputWriter.write("\n")
 }
 
 fun decompress(inputFile: File, outputFileName: String, bufferSize: Int) {
     val fin = inputFile.inputStream()
     val `in` = BufferedInputStream(fin)
     val bzIn = BZip2CompressorInputStream(`in`)
+    var outputWriter = FileWriter(outputFileName, true)
     bzIn.use { bzIn ->
         val buffer = ByteArray(bufferSize)
         var n = 0
@@ -147,13 +159,14 @@ fun decompress(inputFile: File, outputFileName: String, bufferSize: Int) {
             }
             out.close()
             t1.join()
-            printTitles()
-            printWords()
-            printSizes()
-            printYears()
+            printTitles(outputWriter)
+            printWords(outputWriter)
+            printSizes(outputWriter)
+            printYears(outputWriter)
         } finally {
             println(count)
         }
+        outputWriter.close()
     }
 }
 
@@ -297,7 +310,7 @@ fun main(args: Array<String>) {
             val threads = mutableListOf<Thread>()
             for (file in parameters.inputs) {
                 threads.add(thread {
-                    decompress(file, file.toString().plus(".xml"), 262144)
+                    decompress(file, parameters.output, 262144)
                 })
             }
             threads.forEach {
