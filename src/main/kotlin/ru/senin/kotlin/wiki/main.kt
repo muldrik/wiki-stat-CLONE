@@ -43,9 +43,6 @@ val words: ConcurrentHashMap<String, AtomicInteger> = ConcurrentHashMap()
 val years: ConcurrentHashMap<Int, AtomicInteger> = ConcurrentHashMap()
 val sizes: ConcurrentHashMap<Int, AtomicInteger> = ConcurrentHashMap()
 
-val poolRuns = AtomicInteger(0)
-val selfRUns = AtomicInteger(0)
-
 lateinit var parsingPool: ThreadPoolExecutor
 lateinit var statPool: ThreadPoolExecutor
 
@@ -64,30 +61,30 @@ fun main(args: Array<String>) {
 
         val duration = measureTime {
             val fileCount = parameters.inputs.size
-            val threadCount = maxOf(parameters.threads, 2)
-            val pairs = minOf(threadCount/2, fileCount)
-            //At least two threads parse each bzip2
 
-            parsingPool = ThreadPoolExecutor(pairs, pairs,
+            parsingPool = ThreadPoolExecutor(minOf(parameters.threads, fileCount), minOf(parameters.threads, fileCount),
                 0L, TimeUnit.MILLISECONDS, LinkedBlockingQueue())
             //Every thread from this pool invokes one more thread
-            statPool = ThreadPoolExecutor(threadCount-pairs, maxOf(parameters.threads-pairs, 1),
-                0L, TimeUnit.MILLISECONDS, ArrayBlockingQueue(500))
+            statPool = ThreadPoolExecutor(parameters.threads, parameters.threads,
+                0L, TimeUnit.MILLISECONDS, LinkedBlockingQueue())
             //All threads that are not parsing the files directly help to update statistics
 
             for (file in parameters.inputs) {
                 parsingPool.execute {
-                    decompressAndPipe(file, 262144)
+                    decompressAndPipe(file, 16384*16*4)
                 }
             }
             parsingPool.shutdown()
             parsingPool.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS)
             statPool.shutdown()
             statPool.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS)
-            printResults(parameters.output)
         }
         println("Time: ${duration.inMilliseconds} ms")
-        println("Pool runs: $poolRuns, self runs: $selfRUns")
+        val printDuration = measureTime {
+            printResults(parameters.output)
+        }
+        println("Output time: $printDuration")
+
 
     } catch (e: Exception) {
         println("Error! ${e.message}")

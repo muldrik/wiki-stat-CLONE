@@ -103,14 +103,8 @@ internal class SAXHandler : DefaultHandler() {
                 val text = currentText.toString()
                 val time = currentTime.toString()
                 val size = currentSize
-                try {
-                    statPool.submit {
-                        updateStat(title, text, size, time)
-                    }
-                    poolRuns.incrementAndGet()
-                } catch (jee: RejectedExecutionException) {
+                statPool.submit {
                     updateStat(title, text, size, time)
-                    selfRUns.incrementAndGet()
                 }
             }
             wasTitle = false
