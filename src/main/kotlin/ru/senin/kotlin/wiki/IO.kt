@@ -5,35 +5,28 @@ import java.io.*
 import kotlin.concurrent.thread
 
 fun decompressAndPipe(inputFile: File, bufferSize: Int) {
-    try {
-        val fin = inputFile.inputStream()
-        val `in` = BufferedInputStream(fin)
-        val bzIn = BZip2CompressorInputStream(`in`)
-        bzIn.use {
-            val buffer = ByteArray(bufferSize)
-            var n: Int
-            val out = PipedOutputStream()
-            val pipe = PipedInputStream(out, bufferSize)
+    val fin = inputFile.inputStream()
+    val `in` = BufferedInputStream(fin)
+    val bzIn = BZip2CompressorInputStream(`in`)
+    bzIn.use {
+        val buffer = ByteArray(bufferSize)
+        var n: Int
+        val out = PipedOutputStream()
+        val pipe = PipedInputStream(out, bufferSize)
 
-            val t1 = thread {
-                try {
-                    SaxParser().parse(pipe)
-                }
-                catch (e: Exception) {
-                    println("Error! ${e.message}")
-                    throw e
-                }
+        val t1 = thread {
+            try {
+                SaxParser().parse(pipe)
+            } catch (e: Exception) {
+                println("Error! ${e.message}")
+                throw e
             }
-            while (-1 != it.read(buffer).also { n = it }) {
-                out.write(buffer, 0, n)
-            }
-            out.close()
-            t1.join()
         }
-    }
-    catch (e: Exception) {
-        println("Error! ${e.message}")
-        throw e
+        while (-1 != it.read(buffer).also { n = it }) {
+            out.write(buffer, 0, n)
+        }
+        out.close()
+        t1.join()
     }
 }
 
