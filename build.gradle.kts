@@ -38,5 +38,5 @@ kotlin.sourceSets.all {
 
 tasks.withType<Test>().all {
     useJUnitPlatform()
-    testLogging.showStandardStreams = true
+    //testLogging.showStandardStreams = true
 }

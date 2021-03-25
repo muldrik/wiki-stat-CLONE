@@ -46,6 +46,8 @@ val sizes: ConcurrentHashMap<Int, AtomicInteger> = ConcurrentHashMap()
 lateinit var parsingPool: ThreadPoolExecutor
 lateinit var statPool: ThreadPoolExecutor
 
+const val bufferSize = 16384*16*16
+
 fun main(args: Array<String>) {
     try {
         titles.clear()
@@ -71,7 +73,7 @@ fun main(args: Array<String>) {
 
             for (file in parameters.inputs) {
                 parsingPool.execute {
-                    decompressAndPipe(file, 16384*16*4)
+                    decompressAndPipe(file, bufferSize)
                 }
             }
             parsingPool.shutdown()
