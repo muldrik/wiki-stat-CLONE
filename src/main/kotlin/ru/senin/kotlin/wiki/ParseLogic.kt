@@ -4,16 +4,18 @@ import org.xml.sax.Attributes
 import org.xml.sax.SAXException
 import org.xml.sax.helpers.DefaultHandler
 import java.io.InputStream
+import java.util.concurrent.RejectedExecutionException
+import java.util.concurrent.atomic.AtomicInteger
 import javax.xml.parsers.SAXParserFactory
 
 fun getRussianWords(s: String): List<String> =
 
     s.split("""[^А-Яа-я]+""".toRegex()).map { it.toLowerCase() }.filter { it.length >= 3 }
 
-fun cmp() = Comparator<MutableMap.MutableEntry<String, Int>> { it1, it2 ->
+fun cmp() = Comparator<MutableMap.MutableEntry<String, AtomicInteger>> { it1, it2 ->
     when {
-        it1.component1() == it2.component1() && it1.component2() == it2.component2() -> 0
-        it1.component2() < it2.component2() || (it1.component2() == it2.component2() && it1.component1() > it2.component1()) -> 1
+        it1.component1() == it2.component1() && it1.component2().get() == it2.component2().get() -> 0
+        it1.component2().get() < it2.component2().get() || (it1.component2().get() == it2.component2().get() && it1.component1() > it2.component1()) -> 1
         else -> -1
     }
 }
@@ -50,6 +52,7 @@ internal class SAXHandler : DefaultHandler() {
     private var currentText = StringBuilder()
     private var currentTitle = StringBuilder()
     private var currentSize: Int = 0
+    @Volatile
     private var currentTime = StringBuilder()
 
     var wasText = false
@@ -79,32 +82,46 @@ internal class SAXHandler : DefaultHandler() {
     }
 
     private fun updateStat(currentTitle: String, currentText:String, currentSize: Int, currentTime: String) {
-        pool.execute {
-            val ts = getRussianWords(currentTitle.toLowerCase())
-            val ws = getRussianWords(currentText.toLowerCase())
-            for (t in ts)
-                titles[t] = titles.getOrDefault(t, 0) + 1
-            for (w in ws)
-                words[w] = words.getOrDefault(w, 0) + 1
-            sizes[currentSize] = sizes.getOrDefault(currentSize, 0) + 1
-            currentTime.substring(0, 4).toIntOrNull()?.let { years[it] = years.getOrDefault(it, 0) + 1 }
-        }
+        val ts = getRussianWords(currentTitle.toLowerCase())
+        val ws = getRussianWords(currentText.toLowerCase())
+        for (t in ts)
+            titles.computeIfAbsent(t) { AtomicInteger(0) }.incrementAndGet()
+            //titles[t] = titles.getOrDefault(t, 0) + 1
+        for (w in ws)
+            words.computeIfAbsent(w) { AtomicInteger(0) }.incrementAndGet()
+            //words[w] = words.getOrDefault(w, 0) + 1
+        sizes.computeIfAbsent(currentSize) {AtomicInteger(0)}.incrementAndGet()
+        currentTime.substring(0, 4).toIntOrNull()
+            ?.let { years.computeIfAbsent(it) { AtomicInteger(0) }.incrementAndGet() }
     }
 
     @Throws(SAXException::class)
     override fun endElement(uri: String, localName: String, qName: String) {
         if (insidePage == headers) {
-            if (wasTitle && wasText && wasSize && wasTime)
-                updateStat(currentTitle.toString(), currentText.toString(), currentSize, currentTime.toString())
+            if (wasTitle && wasText && wasSize && wasTime) {
+                val title = currentTitle.toString()
+                val text = currentText.toString()
+                val time = currentTime.toString()
+                val size = currentSize
+                try {
+                    statPool.submit {
+                        updateStat(title, text, size, time)
+                    }
+                    poolRuns.incrementAndGet()
+                } catch (jee: RejectedExecutionException) {
+                    updateStat(title, text, size, time)
+                    selfRUns.incrementAndGet()
+                }
+            }
             wasTitle = false
             wasText = false
             wasSize = false
             wasTime = false
 
-            currentTitle = StringBuilder()
-            currentText = StringBuilder()
+            currentTitle.clear()
+            currentText.clear()
             currentSize = 0
-            currentTime = StringBuilder()
+            currentTime.clear()
         }
         headers.removeLast()
     }

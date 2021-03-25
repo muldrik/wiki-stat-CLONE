@@ -23,6 +23,11 @@ fun decompressAndPipe(inputFile: File, bufferSize: Int) {
         out.close()
         t1.join()
     }
+    if (parsingPool.taskCount == 0L) {
+        //If no more xml are in queue then free one more thread for updating statistics
+        statPool.maximumPoolSize+=2
+        statPool.corePoolSize+=2
+    }
 }
 
 fun printTitles(outputWriter: FileWriter) {
