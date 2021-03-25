@@ -30,7 +30,7 @@ fun decompressAndPipe(inputFile: File, bufferSize: Int) {
     }
 }
 
-fun printTitles(outputWriter: FileWriter) {
+fun printTitles(outputWriter: OutputStreamWriter) {
     outputWriter.write("Топ-300 слов в заголовках статей:\n")
     var cnt = 0
     for (v in titles.entries.sortedWith(cmp())) {
@@ -42,7 +42,7 @@ fun printTitles(outputWriter: FileWriter) {
     outputWriter.write("\n")
 }
 
-fun printWords(outputWriter: FileWriter) {
+fun printWords(outputWriter: OutputStreamWriter) {
     outputWriter.write("Топ-300 слов в статьях:\n")
     var cnt = 0
     for (v in words.entries.sortedWith(cmp())) {
@@ -54,7 +54,7 @@ fun printWords(outputWriter: FileWriter) {
     outputWriter.write("\n")
 }
 
-fun printYears(outputWriter: FileWriter) {
+fun printYears(outputWriter: OutputStreamWriter) {
     var l = -1
     var r = 10000
     while ((++l < 10000) && years.getOrDefault(l, 0) == 0);
@@ -66,7 +66,7 @@ fun printYears(outputWriter: FileWriter) {
     }
 }
 
-fun printSizes(outputWriter: FileWriter) {
+fun printSizes(outputWriter: OutputStreamWriter) {
     var l = -1
     var r = 10000
     while ((++l < 10000) && sizes.getOrDefault(l, 0) == 0);
@@ -80,11 +80,10 @@ fun printSizes(outputWriter: FileWriter) {
 }
 
 fun printResults(outputFileName: String) {
-    val outputWriter = FileWriter(outputFileName)
+    val outputWriter = File(outputFileName).writer()
     printTitles(outputWriter)
     printWords(outputWriter)
     printSizes(outputWriter)
     printYears(outputWriter)
-    outputWriter.flush()
     outputWriter.close()
 }
