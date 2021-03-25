@@ -132,6 +132,8 @@ class AppTest {
     private fun assertFilesHaveSameContent(expectedFileName: String, actualFileName: String, message: String? = null) {
         val actual = Paths.get(TEMPORARY_DIRECTORY).resolve(actualFileName).toFile().readText()
         val expected = Paths.get(TEST_DATA_PATH).resolve(expectedFileName).toFile().readText()
+        println(expected)
+        println("-----------------")
         println(actual)
         assertEquals(expected, actual, message)
     }
