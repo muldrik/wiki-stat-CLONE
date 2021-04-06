@@ -12,11 +12,19 @@ fun getRussianWords(s: String): List<String> =
 
     s.split("""[^А-Яа-я]+""".toRegex()).map { it.toLowerCase() }.filter { it.length >= 3 }
 
-fun cmp() = Comparator<MutableMap.MutableEntry<String, AtomicInteger>> { it1, it2 ->
+fun strCmp() = Comparator<MutableMap.MutableEntry<String, AtomicInteger>> { it1, it2 ->
     when {
-        it1.component1() == it2.component1() && it1.component2().get() == it2.component2().get() -> 0
-        it1.component2().get() < it2.component2().get() || (it1.component2().get() == it2.component2().get() && it1.component1() > it2.component1()) -> 1
+        it1.key == it2.key && it1.value.get() == it2.value.get() -> 0
+        it1.value.get() < it2.value.get() || (it1.value.get() == it2.value.get() && it1.key > it2.key) -> 1
         else -> -1
+    }
+}
+
+fun intCmp() = Comparator<MutableMap.MutableEntry<Int, AtomicInteger>> { it1, it2 ->
+    when {
+        it1.key == it2.key && it1.value.get() == it2.value.get() -> 0
+        it1.key < it2.key -> -1
+        else -> 1
     }
 }
 
@@ -52,7 +60,6 @@ internal class SAXHandler : DefaultHandler() {
     private var currentText = StringBuilder()
     private var currentTitle = StringBuilder()
     private var currentSize: Int = 0
-    @Volatile
     private var currentTime = StringBuilder()
 
     var wasText = false

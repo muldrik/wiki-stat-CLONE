@@ -46,7 +46,7 @@ val sizes: ConcurrentHashMap<Int, AtomicInteger> = ConcurrentHashMap()
 lateinit var parsingPool: ThreadPoolExecutor
 lateinit var statPool: ThreadPoolExecutor
 
-const val bufferSize = 16384*16*16
+const val bufferSize = 16384 * 16 * 16
 
 fun main(args: Array<String>) {
     try {
@@ -63,12 +63,17 @@ fun main(args: Array<String>) {
 
         val duration = measureTime {
             val fileCount = parameters.inputs.size
+            val numberOfThreads = minOf(parameters.threads, fileCount)
 
-            parsingPool = ThreadPoolExecutor(minOf(parameters.threads, fileCount), minOf(parameters.threads, fileCount),
-                0L, TimeUnit.MILLISECONDS, LinkedBlockingQueue())
+            parsingPool = ThreadPoolExecutor(
+                numberOfThreads, numberOfThreads,
+                0L, TimeUnit.MILLISECONDS, LinkedBlockingQueue()
+            )
             //Every thread from this pool invokes one more thread
-            statPool = ThreadPoolExecutor(parameters.threads, parameters.threads,
-                0L, TimeUnit.MILLISECONDS, LinkedBlockingQueue())
+            statPool = ThreadPoolExecutor(
+                parameters.threads, parameters.threads,
+                0L, TimeUnit.MILLISECONDS, LinkedBlockingQueue()
+            )
             //All threads that are not parsing the files directly help to update statistics
 
             for (file in parameters.inputs) {
