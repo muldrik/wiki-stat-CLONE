@@ -73,6 +73,7 @@ internal class SAXHandler : DefaultHandler() {
     override fun startElement(uri: String, localName: String, qName: String, attributes: Attributes) {
         headers.add(qName)
         if (insidePageRevisionText == headers) {
+            wasText = true
             val n = attributes.length
             var sz = -1
             for (i in 0 until n) {
@@ -86,6 +87,8 @@ internal class SAXHandler : DefaultHandler() {
                 currentSize = getPow(sz)
             }
         }
+        if (insidePageTitle == headers)
+            wasTitle = true
     }
 
     private fun updateStat(currentTitle: String, currentText:String, currentSize: Int, currentTime: String) {
@@ -93,10 +96,8 @@ internal class SAXHandler : DefaultHandler() {
         val ws = getRussianWords(currentText.toLowerCase())
         for (t in ts)
             titles.computeIfAbsent(t) { AtomicInteger(0) }.incrementAndGet()
-            //titles[t] = titles.getOrDefault(t, 0) + 1
         for (w in ws)
             words.computeIfAbsent(w) { AtomicInteger(0) }.incrementAndGet()
-            //words[w] = words.getOrDefault(w, 0) + 1
         sizes.computeIfAbsent(currentSize) {AtomicInteger(0)}.incrementAndGet()
         currentTime.substring(0, 4).toIntOrNull()
             ?.let { years.computeIfAbsent(it) { AtomicInteger(0) }.incrementAndGet() }
@@ -130,11 +131,9 @@ internal class SAXHandler : DefaultHandler() {
     @Throws(SAXException::class)
     override fun characters(ch: CharArray, start: Int, length: Int) {
         if (insidePageTitle == headers) {
-            wasTitle = true
             currentTitle.append(String(ch, start, length))
         }
         if (insidePageRevisionText == headers) {
-            wasText = true
             currentText.append(String(ch, start, length))
         }
         if (insidePageRevisionTime == headers) {

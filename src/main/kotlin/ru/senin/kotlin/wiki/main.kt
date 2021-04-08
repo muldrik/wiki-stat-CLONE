@@ -50,10 +50,6 @@ const val bufferSize = 16384 * 16 * 16
 
 fun main(args: Array<String>) {
     try {
-        titles.clear()
-        words.clear()
-        years.clear()
-        sizes.clear()
         parameters = Parameters().parse(args)
 
         if (parameters.help) {
@@ -69,12 +65,10 @@ fun main(args: Array<String>) {
                 numberOfThreads, numberOfThreads,
                 0L, TimeUnit.MILLISECONDS, LinkedBlockingQueue()
             )
-            //Every thread from this pool invokes one more thread
             statPool = ThreadPoolExecutor(
                 parameters.threads, parameters.threads,
                 0L, TimeUnit.MILLISECONDS, LinkedBlockingQueue()
             )
-            //All threads that are not parsing the files directly help to update statistics
 
             for (file in parameters.inputs) {
                 parsingPool.execute {
