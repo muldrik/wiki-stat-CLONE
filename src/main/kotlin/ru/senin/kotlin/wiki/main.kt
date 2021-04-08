@@ -46,7 +46,7 @@ val sizes: ConcurrentHashMap<Int, AtomicInteger> = ConcurrentHashMap()
 lateinit var parsingPool: ThreadPoolExecutor
 lateinit var statPool: ThreadPoolExecutor
 
-const val bufferSize = 16384 * 16 * 16
+const val bufferSize = 16384
 
 fun main(args: Array<String>) {
     try {
