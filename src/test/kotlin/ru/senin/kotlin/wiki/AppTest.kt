@@ -49,6 +49,14 @@ class AppTest {
         }
     }
 
+    @BeforeEach
+    fun clearStat() {
+        titles.clear()
+        words.clear()
+        years.clear()
+        sizes.clear()
+    }
+
     @Test
     @Timeout(TIMEOUT)
     fun `good XML`() {

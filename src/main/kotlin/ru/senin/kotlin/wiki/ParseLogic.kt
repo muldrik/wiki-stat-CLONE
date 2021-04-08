@@ -12,11 +12,19 @@ fun getRussianWords(s: String): List<String> =
 
     s.split("""[^А-Яа-я]+""".toRegex()).map { it.toLowerCase() }.filter { it.length >= 3 }
 
-fun cmp() = Comparator<MutableMap.MutableEntry<String, AtomicInteger>> { it1, it2 ->
+fun strCmp() = Comparator<MutableMap.MutableEntry<String, AtomicInteger>> { it1, it2 ->
     when {
-        it1.component1() == it2.component1() && it1.component2().get() == it2.component2().get() -> 0
-        it1.component2().get() < it2.component2().get() || (it1.component2().get() == it2.component2().get() && it1.component1() > it2.component1()) -> 1
+        it1.key == it2.key && it1.value.get() == it2.value.get() -> 0
+        it1.value.get() < it2.value.get() || (it1.value.get() == it2.value.get() && it1.key > it2.key) -> 1
         else -> -1
+    }
+}
+
+fun intCmp() = Comparator<MutableMap.MutableEntry<Int, AtomicInteger>> { it1, it2 ->
+    when {
+        it1.key == it2.key && it1.value.get() == it2.value.get() -> 0
+        it1.key < it2.key -> -1
+        else -> 1
     }
 }
 
@@ -52,7 +60,6 @@ internal class SAXHandler : DefaultHandler() {
     private var currentText = StringBuilder()
     private var currentTitle = StringBuilder()
     private var currentSize: Int = 0
-    @Volatile
     private var currentTime = StringBuilder()
 
     var wasText = false
@@ -66,6 +73,7 @@ internal class SAXHandler : DefaultHandler() {
     override fun startElement(uri: String, localName: String, qName: String, attributes: Attributes) {
         headers.add(qName)
         if (insidePageRevisionText == headers) {
+            wasText = true
             val n = attributes.length
             var sz = -1
             for (i in 0 until n) {
@@ -79,6 +87,8 @@ internal class SAXHandler : DefaultHandler() {
                 currentSize = getPow(sz)
             }
         }
+        if (insidePageTitle == headers)
+            wasTitle = true
     }
 
     private fun updateStat(currentTitle: String, currentText:String, currentSize: Int, currentTime: String) {
@@ -86,10 +96,8 @@ internal class SAXHandler : DefaultHandler() {
         val ws = getRussianWords(currentText.toLowerCase())
         for (t in ts)
             titles.computeIfAbsent(t) { AtomicInteger(0) }.incrementAndGet()
-            //titles[t] = titles.getOrDefault(t, 0) + 1
         for (w in ws)
             words.computeIfAbsent(w) { AtomicInteger(0) }.incrementAndGet()
-            //words[w] = words.getOrDefault(w, 0) + 1
         sizes.computeIfAbsent(currentSize) {AtomicInteger(0)}.incrementAndGet()
         currentTime.substring(0, 4).toIntOrNull()
             ?.let { years.computeIfAbsent(it) { AtomicInteger(0) }.incrementAndGet() }
@@ -123,11 +131,9 @@ internal class SAXHandler : DefaultHandler() {
     @Throws(SAXException::class)
     override fun characters(ch: CharArray, start: Int, length: Int) {
         if (insidePageTitle == headers) {
-            wasTitle = true
             currentTitle.append(String(ch, start, length))
         }
         if (insidePageRevisionText == headers) {
-            wasText = true
             currentText.append(String(ch, start, length))
         }
         if (insidePageRevisionTime == headers) {
